@@ -1,4 +1,5 @@
-import base64, json, sqlite3, ssl, urllib, urllib2, requests
+import sqlite3
+import requests
 
 dbPath='/opt/sweetsecurity/server/SweetSecurity.db'
 

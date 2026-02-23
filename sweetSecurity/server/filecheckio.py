@@ -1,7 +1,9 @@
 import alert, es, logging
-import urllib, urllib2, ssl, json
+import ssl, json
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 from elasticsearch import Elasticsearch
-esService = Elasticsearch()
+esService = Elasticsearch(hosts=['http://localhost:9200'])
 
 def putKey(apiKey):
 	matchAll = {"query": {"match_all": {}}}
@@ -33,9 +35,9 @@ def check(apiKey, fileName=None, fileSize=None, fileVersion=None, md5=None, sha1
 	"sha256": sha256 or "",
 	"sha512": sha512 or "",
 	"key": apiKey}
-	data = urllib.urlencode(parameters)
-	req = urllib2.Request(url, data)
-	response = urllib2.urlopen(req, context=ctx)
+	data = urlencode(parameters).encode('utf-8')
+	req = Request(url, data=data)
+	response = urlopen(req, context=ctx)
 	return response
 
 def getLogData():
@@ -80,23 +82,22 @@ def run():
 				sha1=''
 			sha256=''
 			sha512=''
-			if file['_source']['filename'] != '-':
-				fileName=file['_source']['filename']
-			if 'filecheckscore' not in file['_source']:
-				fileStatus=check(apiKey, fileName, fileSize, fileVersion, md5, sha1, sha256, sha512)
-				fileCheckJson=json.loads(fileStatus.read())
-				try:
-					if fileCheckJson['status']==400:
-						logger.info("Exceeded FileCheck.io api requests")
-						return None
-				except: pass
-				filecheckScore=fileCheckJson['validation']
-				filecheckScore=fileCheckJson['validation']
-				body = {'doc' : {'filecheckscore': filecheckScore}}
-		                es.update(esService, body, file['_index'], 'logs', file['_id'])
-				if filecheckScore not in [0,404]:
-					logger.info("ALERT: FileCheck.io found a malicious file!")
-					message='FileCheck.io Found a Malicious File\nFile Name: %s\nFile MD5: %s\nFile SHA1: %s\nFileCheckIO Reputation Score: %s' % (fileName,md5,sha1,filecheckScore)
-					alert.send('FileCheckIO',message,file['_id'],file['_index'])
-					print "Sending Message"
-
+				if file['_source']['filename'] != '-':
+					fileName=file['_source']['filename']
+				if 'filecheckscore' not in file['_source']:
+					fileStatus=check(apiKey, fileName, fileSize, fileVersion, md5, sha1, sha256, sha512)
+					fileCheckJson=json.loads(fileStatus.read().decode('utf-8'))
+					try:
+						if fileCheckJson['status']==400:
+							logger.info("Exceeded FileCheck.io api requests")
+							return None
+					except: pass
+					filecheckScore=fileCheckJson['validation']
+					filecheckScore=fileCheckJson['validation']
+					body = {'doc' : {'filecheckscore': filecheckScore}}
+					es.update(esService, body, file['_index'], 'logs', file['_id'])
+					if filecheckScore not in [0,404]:
+						logger.info("ALERT: FileCheck.io found a malicious file!")
+						message='FileCheck.io Found a Malicious File\nFile Name: %s\nFile MD5: %s\nFile SHA1: %s\nFileCheckIO Reputation Score: %s' % (fileName,md5,sha1,filecheckScore)
+						alert.send('FileCheckIO',message,file['_id'],file['_index'])
+						print("Sending Message")
