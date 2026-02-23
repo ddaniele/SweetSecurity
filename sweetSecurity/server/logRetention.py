@@ -5,7 +5,7 @@ from elasticsearch import Elasticsearch
 esService = Elasticsearch(hosts=['http://localhost:9200'])
 
 def getNumIndices():
-	return len(esService.indices.get('logstash-*'))
+	return len(esService.indices.get(index='logstash-*'))
 
 def putSSConfig():
 	config={'defaultIsolate': 0, 'defaultLogRetention': 0, 'defaultMonitor': 0, 'defaultFW': 0}
@@ -51,7 +51,7 @@ def deleteOldLogs():
 	logsDeleted=0
 	today=datetime.datetime.now()
 	indices=[]
-	for index in esService.indices.get('logstash-*'):
+	for index in esService.indices.get(index='logstash-*'):
 		indices.append(index)
 	logger.info("There are %d days worth of logs" % len(indices))
 	indices=sorted(indices)

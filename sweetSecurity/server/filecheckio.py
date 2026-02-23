@@ -52,7 +52,8 @@ def getLogData():
 			}
 		}
 	fileData=es.search(esService, fileQuery, 'logstash-*', 'logs', 10000)
-	logTotal=fileData['hits']['total']
+	if fileData is None:
+		return files
 	for log in fileData['hits']['hits']:
 		files.append(log)
 	return files
