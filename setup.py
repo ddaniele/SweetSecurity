@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, fcntl, getpass, json, os, re, shutil, socket, sqlite3, struct, sys
+import argparse, fcntl, getpass, json, os, re, shutil, socket, sqlite3, struct, subprocess, sys
 from time import sleep
 
 # Local Installer Scripts
@@ -40,7 +40,7 @@ def get_user_input(input_string):
 def getIP(ifname):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s', ifname[:15]))[20:24])
+        return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s', ifname[:15].encode()))[20:24])
     except:
         return ''
 
@@ -123,7 +123,7 @@ if __name__ == "__main__":
         httpUser = get_user_input("\033[1mEnter username for web portal (apache/kibana)\033[0m: ")
         if len(httpUser) > 100:
             print("Username must be less than 100 characters")
-        if not re.match(r'[0-9a-zA-Z]+', httpUser):
+        if not re.match(r'^[0-9a-zA-Z]+$', httpUser):
             print("Username must be alphanumeric 0-9, a-z, and A-Z")
         else:
             break
@@ -144,7 +144,7 @@ if __name__ == "__main__":
         elasticUser = get_user_input("\033[1mEnter username for Elasticsearch\033[0m: ")
         if len(elasticUser) > 100:
             print("Username must be less than 100 characters")
-        if not re.match(r'[0-9a-zA-Z]+', elasticUser):
+        if not re.match(r'^[0-9a-zA-Z]+$', elasticUser):
             print("Username must be alphanumeric 0-9, a-z, and A-Z")
         else:
             break
@@ -170,14 +170,14 @@ if __name__ == "__main__":
                 installCriticalStack = get_user_input(
                     "\033[1mInstall Critical Stack Threat Intel For Bro IDS (Y/n)\033[0m: ")
                 if installCriticalStack.lower() not in ('y', 'n', ''):
-                    print "Must choose Y or N."
+                    print("Must choose Y or N.")
                 else:
                     break
             if installCriticalStack.lower() == 'y' or len(installCriticalStack) == 0:
                 installCriticalStack = 'y'
                 while True:
                     csKey = get_user_input("    \033[1mEnter Your Critical Stack API Key\033[0m: ")
-                    if not re.match(r'[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}',
+                    if not re.match(r'^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$',
                                     csKey):
                         print("        Not a valid API key.")
                     else:
@@ -186,7 +186,7 @@ if __name__ == "__main__":
         if criticalStackInstalled == False and installCriticalStack.lower() == 'y':
             criticalStack.install(csKey)
         else:
-            print "Skipping Critical Stack Install"
+            print("Skipping Critical Stack Install")
         # Check if We Should Install Fail2Ban
         # while True:
         #	installFail2Ban = get_user_input("\033[1mInstall Fail2Ban (Y/n)\033[0m: ")
@@ -197,37 +197,37 @@ if __name__ == "__main__":
         # if installFail2Ban == 'y' or installFail2Ban == '':
         #	fail2ban.install()
         apache.install(installType, chosenInterface, chosenInterfaceIP)
-        print "  Creating web portal credentials"
-        os.popen('sudo htpasswd -cb /etc/apache2/.htpasswd %s "%s"' % (httpUser, httpPass)).read()
-        os.popen('sudo htpasswd -cb /etc/apache2/.elasticsearch %s "%s"' % (elasticUser, elasticPass)).read()
+        print("  Creating web portal credentials")
+        subprocess.run(['sudo', 'htpasswd', '-cb', '/etc/apache2/.htpasswd', httpUser, httpPass], check=True)
+        subprocess.run(['sudo', 'htpasswd', '-cb', '/etc/apache2/.elasticsearch', elasticUser, elasticPass], check=True)
         # Get system default configurations
         fileCheckKey = None
         while True:
             installFileCheck = get_user_input("\033[1mCheck Files Against FileCheck.IO (y/N)\033[0m: ")
             if installFileCheck.lower() not in ('y', 'n', ''):
-                print "Must choose Y or N."
+                print("Must choose Y or N.")
             else:
                 break
         if installFileCheck.lower() == 'y':
             installFileCheck = 'y'
             while True:
                 fileCheckKey = get_user_input("    \033[1mEnter Your FileCheckIO API Key\033[0m: ")
-                if not re.match(r'[0-9a-fA-F]{56}', fileCheckKey):
+                if not re.match(r'^[0-9a-fA-F]{56}$', fileCheckKey):
                     print("        Not a valid API key.")
                 else:
                     break
         elasticSearch.install(fileCheckKey)
         kibana.install(chosenInterfaceIP)
-        print "Restarting Apache"
+        print("Restarting Apache")
         os.popen('sudo service apache2 restart').read()
         logstash.install('localhost', elasticUser, elasticPass)
         sweetSecurity.installClient(chosenInterface)
         sweetSecurity.addWebCreds('localhost', httpUser, httpPass,'client')
-        print "Starting SweetSecurity Client"
+        print("Starting SweetSecurity Client")
         os.popen('sudo service sweetsecurity restart').read()
         sweetSecurity.installServer()
         sweetSecurity.addWebCreds('localhost', httpUser, httpPass, 'server')
-        print "Starting SweetSecurity Server"
+        print("Starting SweetSecurity Server")
         os.popen('sudo service sweetsecurity_server restart').read()
     elif installType == '2':
         # Bro IDS, Critical Stack, Logstash, Sweet Security
@@ -247,7 +247,7 @@ if __name__ == "__main__":
                 installCriticalStack = 'y'
                 while True:
                     csKey = get_user_input("    \033[1mEnter Your Critical Stack API Key\033[0m: ")
-                    if not re.match(r'[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}',
+                    if not re.match(r'^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$',
                                     csKey):
                         print("        Not a valid API key.")
                     else:
@@ -260,7 +260,7 @@ if __name__ == "__main__":
         logstash.install(esServer, elasticUser, elasticPass)
         sweetSecurity.installClient(chosenInterface)
         sweetSecurity.addWebCreds(esServer, httpUser, httpPass,'client')
-        print "Starting SweetSecurity"
+        print("Starting SweetSecurity")
         os.popen('sudo service sweetsecurity restart').read()
     elif installType == '3':
         # Elasticsearch, Kibana, Apache
@@ -268,36 +268,36 @@ if __name__ == "__main__":
         while True:
             installFail2Ban = get_user_input("\033[1mInstall Fail2Ban (Y/n)\033[0m: ")
             if installFail2Ban.lower() not in ('y', 'n', ''):
-                print "Must choose Y or N."
+                print("Must choose Y or N.")
             else:
                 break
         if installFail2Ban == 'y' or installFail2Ban == '':
             fail2ban.install()
         apache.install(installType, chosenInterface, chosenInterfaceIP)
-        print "  Creating web portal credentials"
-        os.popen('sudo htpasswd -cb /etc/apache2/.htpasswd %s "%s"' % (httpUser, httpPass)).read()
-        os.popen('sudo htpasswd -cb /etc/apache2/.elasticsearch %s "%s"' % (elasticUser, elasticPass)).read()
+        print("  Creating web portal credentials")
+        subprocess.run(['sudo', 'htpasswd', '-cb', '/etc/apache2/.htpasswd', httpUser, httpPass], check=True)
+        subprocess.run(['sudo', 'htpasswd', '-cb', '/etc/apache2/.elasticsearch', elasticUser, elasticPass], check=True)
         fileCheckKey = None
         while True:
             installFileCheck = get_user_input("\033[1mCheck Files Against FileCheck.IO (y/N)\033[0m: ")
             if installFileCheck.lower() not in ('y', 'n', ''):
-                print "Must choose Y or N."
+                print("Must choose Y or N.")
             else:
                 break
         if installFileCheck.lower() == 'y':
             installFileCheck = 'y'
             while True:
                 fileCheckKey = get_user_input("    \033[1mEnter Your FileCheckIO API Key\033[0m: ")
-                if not re.match(r'[0-9a-fA-F]{56}', fileCheckKey):
+                if not re.match(r'^[0-9a-fA-F]{56}$', fileCheckKey):
                     print("        Not a valid API key.")
                 else:
                     break
         elasticSearch.install(fileCheckKey)
-        print "  Creating elasticsearch credentials"
+        print("  Creating elasticsearch credentials")
         kibana.install(chosenInterfaceIP)
-        print "Restarting Apache"
+        print("Restarting Apache")
         os.popen('sudo service apache2 restart').read()
         sweetSecurity.installServer()
         sweetSecurity.addWebCreds('localhost', httpUser, httpPass, 'server')
-        print "Starting SweetSecurity Server"
+        print("Starting SweetSecurity Server")
         os.popen('sudo service sweetsecurity_server restart').read()

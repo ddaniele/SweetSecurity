@@ -1,7 +1,7 @@
 import json, os, shutil, sys
 from time import sleep
 
-import hashCheck
+from . import hashCheck
 
 def install(fileCheckKey):
 	elasticLatest='5.5.1'
@@ -17,23 +17,23 @@ def install(fileCheckKey):
 					elasticVersion=jsonStuff['version']['number']
 					break
 				else:
-					print "Waiting for Elasticsearch to start..."
+					print("Waiting for Elasticsearch to start...")
 			except:
-				print "Exception: Waiting for Elasticsearch to start..."
+				print("Exception: Waiting for Elasticsearch to start...")
 			sleep(10)
 		if elasticLatest== elasticVersion.rstrip():
 			elasticInstalled=True
 	if elasticInstalled == False:
-		print "Installing Elasticsearch"
-		print "  Downloading Elasticsearch 5.5.1"
+		print("Installing Elasticsearch")
+		print("  Downloading Elasticsearch 5.5.1")
 		os.popen('sudo wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.5.1.deb 2>&1').read()
 		if not os.path.isfile('elasticsearch-5.5.1.deb'):
 			sys.exit('Error downloading elasticsearch')
 		if not hashCheck.checkHash('elasticsearch-5.5.1.deb'):
 			sys.exit('Error downloading elasticsearch, mismatched file hashes')
-		print "  Installing Elasticsearch"
+		print("  Installing Elasticsearch")
 		os.popen('sudo dpkg -i elasticsearch-5.5.1.deb').read()
-		print "  Cleaning Up Installation Files"
+		print("  Cleaning Up Installation Files")
 		os.remove('elasticsearch-5.5.1.deb')
 		os.popen('sudo update-rc.d elasticsearch defaults').read()
 		#Change heap size to 500m (1/2 of phyical memory)
@@ -47,7 +47,7 @@ def install(fileCheckKey):
 						fileOut.write('-Xmx256m\n')
 					else:
 						fileOut.write(line)
-		print "  Starting Elasticsearch"
+		print("  Starting Elasticsearch")
 		os.popen('sudo systemctl enable elasticsearch.service').read()
 		os.popen('sudo service elasticsearch start').read()
 		#Sleeping 10 seconds to begin with to give it time to startup.
@@ -98,12 +98,12 @@ def install(fileCheckKey):
 			try:
 				jsonSS = json.loads(writeSsIndex)
 				if jsonSS['acknowledged'] == True:
-					print "  sweet_security index created"
+					print("  sweet_security index created")
 					break
 				else:
-					print "Waiting for Elasticsearch to start, will try again in 10 seconds..."
+					print("Waiting for Elasticsearch to start, will try again in 10 seconds...")
 			except:
-				print "Error: Waiting for Elasticsearch to start, will try again in 10 seconds..."
+				print("Error: Waiting for Elasticsearch to start, will try again in 10 seconds...")
 			# Sleep 10 seconds to give ES time to get started
 			sleep(10)
 		while True:
@@ -121,12 +121,12 @@ def install(fileCheckKey):
 			try:
 				jsonSSAlert = json.loads(writeSsAlertIndex)
 				if jsonSSAlert['acknowledged'] == True:
-					print "  sweet_security_alert index created"
+					print("  sweet_security_alert index created")
 					break
 				else:
-					print "Waiting for Elasticsearch to start, will try again in 10 seconds..."
+					print("Waiting for Elasticsearch to start, will try again in 10 seconds...")
 			except:
-				print "Error: Waiting for Elasticsearch to start, will try again in 10 seconds..."
+				print("Error: Waiting for Elasticsearch to start, will try again in 10 seconds...")
 			# Sleep 10 seconds to give ES time to get started
 			sleep(10)
 		try:
@@ -144,8 +144,8 @@ def install(fileCheckKey):
 			sleep(1)
 			esService.index(index='sweet_security', doc_type='configuration', body=configData)
 
-		except Exception, e:
-			print e
+		except Exception as e:
+			print(e)
 			pass
 		while True:
 			tardisIndex='curl -XPUT \'localhost:9200/tardis?pretty\' -H \'Content-Type: application/json\' -d\'' \
@@ -166,13 +166,13 @@ def install(fileCheckKey):
 			try:
 				jsonSS = json.loads(writeTardisIndex)
 				if jsonSS['acknowledged'] == True:
-					print "  tardis index created"
+					print("  tardis index created")
 					break
 				else:
-					print "Waiting for Elasticsearch to start, will try again in 10 seconds..."
+					print("Waiting for Elasticsearch to start, will try again in 10 seconds...")
 			except:
-				print "Error: Waiting for Elasticsearch to start, will try again in 10 seconds..."
+				print("Error: Waiting for Elasticsearch to start, will try again in 10 seconds...")
 			# Sleep 10 seconds to give ES time to get started
 			sleep(10)
 	else:
-		print "Elasticsearch already installed"
+		print("Elasticsearch already installed")

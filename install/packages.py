@@ -6,16 +6,16 @@ def install(installType):
 		javaVersion=os.popen('java -version  2>&1').read()
 		for line in javaVersion.splitlines():
 			if line == 'sh: 1: java: not found':
-				print "\nNo JRE installed"
-				print "\nFor Ubuntu 16: sudo apt-get install default-jre"
+				print("\nNo JRE installed")
+				print("\nFor Ubuntu 16: sudo apt-get install default-jre")
 				sys.exit("\nPlease install JRE 1.8")
 			elif line.startswith('java version "1.7'):
-				print "\nInstalled Java Version: %s" % line
-				print "\nFor Debian: See https://tecadmin.net/install-java-8-on-debian/ for installation steps"
-				print "\nFor Ubuntu 16: sudo apt-get install default-jre"
+				print("\nInstalled Java Version: %s" % line)
+				print("\nFor Debian: See https://tecadmin.net/install-java-8-on-debian/ for installation steps")
+				print("\nFor Ubuntu 16: sudo apt-get install default-jre")
 				sys.exit('\nPlease install JRE 1.8')
 	#Install Pre-requisites
-	print "Install Pre-requisites"
+	print("Install Pre-requisites")
 	os.popen('sudo apt-get update')
 	
 	if installType=='1':

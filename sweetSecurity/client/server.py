@@ -2,6 +2,13 @@ import base64, json, sqlite3, ssl, urllib, urllib2, requests
 
 dbPath="/opt/sweetsecurity/client/SweetSecurity.db"
 
+def tls_verify_option(webCert):
+	if webCert == 'development':
+		return False
+	if webCert in (None, '', 'production'):
+		return True
+	return webCert
+
 def getCreds():
 	creds={'address': None, 'user': None, 'pass': None, 'webCert': 'development'}
 	conn = sqlite3.connect(dbPath)
@@ -32,14 +39,10 @@ def addDevice(hostname,ip,mac,vendor,ignored):
 	csrfUrl = 'https://%s/csrf' % address
 	session = requests.Session()
 	session.auth = (username, password)
-	if webCert == 'development':
-		auth = session.get(csrfUrl, verify=False)
-		data['csrf_token']=auth.content
-		response=session.post(url,data=data, verify=False, headers={"referer": url})
-	else:
-		auth = session.get(csrfUrl, verify=False)
-		data['csrf_token']=auth.content
-		response=session.post(url ,data=data, verify=False, headers={"referer": url })
+	verify_tls = tls_verify_option(webCert)
+	auth = session.get(csrfUrl, verify=verify_tls)
+	data['csrf_token']=auth.content
+	response=session.post(url, data=data, verify=verify_tls, headers={"referer": url})
 	return response
 
 def addPort(portInfo): 
@@ -52,14 +55,10 @@ def addPort(portInfo):
 	csrfUrl = 'https://%s/csrf' % address
 	session = requests.Session()
 	session.auth = (username, password)
-	if webCert == 'development':
-		auth = session.get(csrfUrl, verify=False)
-		portInfo['csrf_token']=auth.content
-		response=session.post(url,data=portInfo, verify=False, headers={"referer": url})
-	else:
-		auth = session.get(csrfUrl, verify=False)
-		portInfo['csrf_token']=auth.content
-		response=session.post(url ,data=portInfo, verify=False, headers={"referer": url })
+	verify_tls = tls_verify_option(webCert)
+	auth = session.get(csrfUrl, verify=verify_tls)
+	portInfo['csrf_token']=auth.content
+	response=session.post(url, data=portInfo, verify=verify_tls, headers={"referer": url})
 	return response
 
 def getConfig(): 
@@ -90,12 +89,8 @@ def healthCheck(healthInfo):
 	csrfUrl = 'https://%s/csrf' % address
 	session = requests.Session()
 	session.auth = (username, password)
-	if webCert == 'development':
-		auth = session.get(csrfUrl, verify=False)
-		healthInfo['csrf_token']=auth.content
-		response=session.post(url,data=healthInfo, verify=False, headers={"referer": url})
-	else:
-		auth = session.get(csrfUrl, verify=False)
-		healthInfo['csrf_token']=auth.content
-		response=session.post(url ,data=healthInfo, verify=False, headers={"referer": url })
+	verify_tls = tls_verify_option(webCert)
+	auth = session.get(csrfUrl, verify=verify_tls)
+	healthInfo['csrf_token']=auth.content
+	response=session.post(url, data=healthInfo, verify=verify_tls, headers={"referer": url})
 	return response

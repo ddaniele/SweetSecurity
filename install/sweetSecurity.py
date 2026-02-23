@@ -1,12 +1,12 @@
 import os, shutil, sqlite3
 
 def installClient(chosenInterface):
-	print "Updating MAC Address List for NMAP"
+	print("Updating MAC Address List for NMAP")
 	shutil.move('/usr/share/nmap/nmap-mac-prefixes','/usr/share/nmap/nmap-mac-prefixes_orig')
 	shutil.copyfile('nmap/nmap-mac-prefixes','/usr/share/nmap/nmap-mac-prefixes')
 	
 	#Install SweetSecurity Code
-	print "Installing Sweet Security Client"
+	print("Installing Sweet Security Client")
 	#Configure Sweet Security Scripts
 	if os.path.exists('/opt/sweetsecurity/client'):
 		shutil.rmtree('/opt/sweetsecurity/client')
@@ -28,7 +28,7 @@ def installClient(chosenInterface):
 	os.popen('sudo systemctl enable sweetsecurity.service').read()
 
 def installServer():
-	print "Installing Sweet Security Server"
+	print("Installing Sweet Security Server")
 	# Configure Sweet Security Scripts
 	if os.path.exists('/opt/sweetsecurity/server'):
 		shutil.rmtree('/opt/sweetsecurity/server')

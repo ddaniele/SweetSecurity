@@ -8,7 +8,7 @@ def get_user_input(input_string):
 
 def install(installType,chosenInterface,chosenIP):
 	cpuArch = os.uname()[4]
-	print "Creating Website"
+	print("Creating Website")
 	#Copy Website Stuff
 	if not os.path.exists('/var/www/webapp'):
 		os.makedirs('/var/www/webapp')
@@ -32,7 +32,7 @@ def install(installType,chosenInterface,chosenIP):
 	
 	#enable SSL
 	#Using instructions from https://www.digitalocean.com/community/tutorials/how-to-create-a-self-signed-ssl-certificate-for-apache-in-ubuntu-16-04
-	print "  Configuring SSL"
+	print("  Configuring SSL")
 	os.popen('sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -subj "/C=US/ST=OR/L=Portland" -keyout /etc/ssl/private/apache-selfsigned.key -out /etc/ssl/certs/apache-selfsigned.crt').read()
 	if cpuArch.startswith('x86'):
 		os.popen('sudo openssl dhparam -out /etc/ssl/certs/dhparam.pem 2048').read()
@@ -68,7 +68,7 @@ def install(installType,chosenInterface,chosenIP):
 		with open("/var/www/webapp/webapp/__init__.py", "wt") as fileOut:
 			for line in fileIn:
 				if line.rstrip() == '__appSettings__':
-					line = "    SECRET_KEY = '%s'\n" % os.urandom(24).encode('hex')
+					line = "    SECRET_KEY = '%s'\n" % os.urandom(24).hex()
 					if apacheEmail == 'y':
 						line += "    MAIL_USERNAME =           os.getenv('MAIL_USERNAME',        '%s')\n" % smtpUser
 						line += "    MAIL_PASSWORD =           os.getenv('MAIL_PASSWORD',        '%s')\n" % smtpPass
