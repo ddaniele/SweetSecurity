@@ -1,4 +1,5 @@
 import datetime, os, re, time
+import html
 from flask import Flask, render_template_string, request, render_template, redirect, jsonify, flash, g
 from flask_mail import Mail
 from flask_wtf.csrf import CSRFProtect
@@ -10,13 +11,13 @@ from time import sleep
 import json
 
 #Local Scripts
-import email
-import es
-import validators
+from . import email
+from . import es
+from . import validators
 
 
 class ConfigClass(object):
-__appSettings__
+    # __appSettings__
     CSRF_ENABLED = True
 
 def create_app():
@@ -69,7 +70,7 @@ def create_app():
         alertQuery = {"query": {"match_phrase": {"addressed": {"query": 0}}}}
         allAlerts = es.search(esService, alertQuery, 'sweet_security_alerts', 'alerts')
         if allAlerts['hits']['total'] > 0:
-            flash(u'There are %d new alerts!' % allAlerts['hits']['total'], 'error')
+            flash('There are %d new alerts!' % allAlerts['hits']['total'], 'error')
             alertCount = allAlerts['hits']['total']
             return render_template('index.html', serverIP=serverIP, deviceList=deviceList, alertCount=alertCount)
         return render_template('index.html', serverIP=serverIP, deviceList=deviceList)
@@ -84,7 +85,7 @@ def create_app():
         vendor = ''
         # ignored='None'
         f = request.form
-        for key in f.keys():
+        for key in list(f.keys()):
             for value in f.getlist(key):
                 if key == "key":
                     apiKey = request.form['key']
@@ -114,10 +115,10 @@ def create_app():
         matchAll = {"query": {"match_all": {}}}
         ssConfig = es.search(esService, matchAll, 'sweet_security', 'configuration')
         if ssConfig is None:
-            print "Error: configuration not found"
+            print("Error: configuration not found")
             return "Error: configuration not found"
         elif len(ssConfig['hits']['hits']) == 0:
-            print "Error: configuration not found"
+            print("Error: configuration not found")
             return "Error: configuration not found"
             # configData={'defaultMonitor': 0, 'defaultIsolate': 0, 'defaultFW': 0, 'defaultLogRetention': 0}
             # es.write(esService, configData, 'sweet_security', 'configuration')
@@ -188,49 +189,47 @@ def create_app():
         mac=''
         nickName=''
         f = request.form
-        for key in f.keys():
+        for key in list(f.keys()):
             for value in f.getlist(key):
                 if key == "macAddress":
                      mac=request.form['macAddress']
                 if key == "nickName":
                      nickName=request.form['nickName']
         if len(mac)==0:
-            flash(u'MAC Address Missing For Device', 'error')
+            flash('MAC Address Missing For Device', 'error')
             return redirect('/')
         if len(nickName)==0:
-            flash(u'New Name Must Actually Have Words', 'error')
+            flash('New Name Must Actually Have Words', 'error')
             return redirect('/')
         deviceQuery = {"query": {"match_phrase": {"mac": { "query": mac }}}}
         deviceInfo=es.search(esService, deviceQuery, 'sweet_security', 'devices')
         #deviceInfo = query_db('SELECT * FROM hosts where mac = ?',[mac],one=True)
         if deviceInfo is None:
-            flash(u'Error renaming device, unknown device', 'error')
+            flash('Error renaming device, unknown device', 'error')
             return redirect('/')
         elif len(deviceInfo['hits']['hits']) == 0:
-            flash(u'Error renaming device, unknown device', 'error')
+            flash('Error renaming device, unknown device', 'error')
             return redirect('/')
         elif len(deviceInfo['hits']['hits']) == 1:
-            import cgi
-            escaped = cgi.escape(nickName)
+            escaped = html.escape(nickName)
             for hit in deviceInfo['hits']['hits']:
                 body = {'doc' : {'nickname': escaped}}
                 es.update(esService, body, 'sweet_security', 'devices', hit['_id'])
             #Have to delay the response so the refreshed page shows the new name
             sleep(1)
-            flash(u'Device renamed', 'success')
+            flash('Device renamed', 'success')
             return redirect('/')
         else:
             es.consolidate(mac,esService,'devices')
             sleep(1)
             deviceInfo=es.search(esService, deviceQuery, 'sweet_security', 'devices')
-            import cgi
-            escaped = cgi.escape(nickName)
+            escaped = html.escape(nickName)
             for hit in deviceInfo['hits']['hits']:
                 body = {'doc' : {'nickname': escaped}}
                 es.update(esService, body, 'sweet_security', 'devices', hit['_id'])
             #Have to delay the response so the refreshed page shows the new name
             sleep(1)
-            flash(u'Device renamed', 'success')
+            flash('Device renamed', 'success')
             return redirect('/')
 
     @app.route('/ignoreDevice', methods=['POST'])
@@ -238,26 +237,26 @@ def create_app():
         mac=''
         ignored=''
         f = request.form
-        for key in f.keys():
+        for key in list(f.keys()):
             for value in f.getlist(key):
                 if key == "macAddress":
                      mac=request.form['macAddress']
                 if key == "ignored":
                      ignored=request.form['ignored']
         if len(mac)==0:
-            flash(u'MAC Address Missing For Device', 'error')
+            flash('MAC Address Missing For Device', 'error')
             return redirect('/')
         if len(ignored)==0:
-            flash(u'Missing ignore flag', 'error')
+            flash('Missing ignore flag', 'error')
             return redirect('/')
 
         deviceQuery = {"query": {"match_phrase": {"mac": { "query": mac }}}}
         deviceInfo=es.search(esService, deviceQuery, 'sweet_security', 'devices')
         if deviceInfo is None:
-            flash(u'Error finding device', 'error')
+            flash('Error finding device', 'error')
             return redirect('/')
         elif len(deviceInfo['hits']['hits']) == 0:
-            flash(u'Error finding device', 'error')
+            flash('Error finding device', 'error')
             return redirect('/')
         elif len(deviceInfo['hits']['hits']) == 1:
             serverIP = re.search(r'^https?://([\w\d\.\-]+)', request.url).groups()
@@ -279,7 +278,7 @@ def create_app():
                 response=email.emailUser(mail,"Device Bypassed",recipient,emailBody)
             #Have to delay the response so the refreshed page shows the new name
             sleep(1)
-            flash(u'Device modified', 'success')
+            flash('Device modified', 'success')
             return redirect('/')
         else:
             serverIP = re.search(r'^https?://([\w\d\.\-]+)', request.url).groups()
@@ -304,7 +303,7 @@ def create_app():
                 email.emailUser(mail,"Device Bypassed",recipient,emailBody)
             #Have to delay the response so the refreshed page shows the new name
             sleep(1)
-            flash(u'Device modified', 'success')
+            flash('Device modified', 'success')
             return redirect('/')
 
     @app.route('/isolateDevice', methods=['POST'])
@@ -312,61 +311,61 @@ def create_app():
         mac = ''
         isolate = ''
         f = request.form
-        for key in f.keys():
+        for key in list(f.keys()):
             for value in f.getlist(key):
                 if key == "macAddress":
                     mac = request.form['macAddress']
                 if key == "isolate":
                     isolate = request.form['isolate']
         if len(mac) == 0:
-            flash(u'MAC Address Missing For Device', 'error')
+            flash('MAC Address Missing For Device', 'error')
             return redirect('/')
         if len(isolate) == 0:
-            flash(u'Missing isolate flag', 'error')
+            flash('Missing isolate flag', 'error')
             return redirect('/')
 
         deviceQuery = {"query": {"match_phrase": {"mac": {"query": mac}}}}
         deviceInfo = es.search(esService, deviceQuery, 'sweet_security', 'devices')
         if deviceInfo is None:
-            flash(u'Error finding device', 'error')
+            flash('Error finding device', 'error')
             return redirect('/')
         elif len(deviceInfo['hits']['hits']) == 0:
-            flash(u'Error finding device', 'error')
+            flash('Error finding device', 'error')
             return redirect('/')
         elif len(deviceInfo['hits']['hits']) == 1:
             for hit in deviceInfo['hits']['hits']:
                 body = {'doc': {'isolate': isolate}}
                 es.update(esService, body, 'sweet_security', 'devices', hit['_id'])
             sleep(1)
-            flash(u'Device modified', 'success')
+            flash('Device modified', 'success')
             return redirect('/')
 
     @app.route('/deleteDevice', methods=['POST'])
     def deleteDevice():
         mac=''
         f = request.form
-        for key in f.keys():
+        for key in list(f.keys()):
             for value in f.getlist(key):
                 if key == "macAddress":
                      mac=request.form['macAddress']
         if len(mac)==0:
-            flash(u'MAC Address Missing For Device', 'error')
+            flash('MAC Address Missing For Device', 'error')
             return redirect('/')
 
         deviceQuery = {"query": {"match_phrase": {"mac": { "query": mac }}}}
         deviceInfo=es.search(esService, deviceQuery, 'sweet_security', 'devices')
         if deviceInfo is None:
-            flash(u'Error finding device', 'error')
+            flash('Error finding device', 'error')
             return redirect('/')
         elif len(deviceInfo['hits']['hits']) == 0:
-            flash(u'Error finding device', 'error')
+            flash('Error finding device', 'error')
             return redirect('/')
         elif len(deviceInfo['hits']['hits']) > 0:
             for hit in deviceInfo['hits']['hits']:
                 es.delete(esService, 'sweet_security', 'devices', hit['_id'])
             #Have to delay the response so the refreshed page shows the new name
             sleep(1)
-            flash(u'Device deleted', 'success')
+            flash('Device deleted', 'success')
             return redirect('/')
 
     @app.route('/device/<mac>')
@@ -376,10 +375,10 @@ def create_app():
         deviceQuery = {"query": {"match_phrase": {"mac": { "query": mac }}}}
         deviceInfo=es.search(esService, deviceQuery, 'sweet_security', 'devices')
         if deviceInfo is None:
-            flash(u'Error finding device', 'error')
+            flash('Error finding device', 'error')
             return redirect('/')
         elif len(deviceInfo['hits']['hits']) == 0:
-            flash(u'Error finding device', 'error')
+            flash('Error finding device', 'error')
             return redirect('/')
         elif len(deviceInfo['hits']['hits']) == 1:
             for host in deviceInfo['hits']['hits']:
@@ -464,7 +463,7 @@ def create_app():
                 baseline.append({'type': 'website', 'value': url['_source']['server_name']})
 
             if deviceAlertCount > 0:
-                flash(u'There are %d alerts for this device' % deviceAlertCount, 'error')
+                flash('There are %d alerts for this device' % deviceAlertCount, 'error')
                 return render_template('device.html', serverIP=serverIP, deviceInfo=deviceInfo,
                                        alertCount=deviceAlertCount,alerts=allAlerts['hits']['hits'], baseline=baseline)
             else:
@@ -483,7 +482,7 @@ def create_app():
         fwDest=''
         fwAction=''
         f = request.form
-        for key in f.keys():
+        for key in list(f.keys()):
             for value in f.getlist(key):
                 if key == "macAddress":
                     mac=request.form['macAddress']
@@ -493,32 +492,32 @@ def create_app():
                 if key == "action":
                     fwAction=request.form['action']
         if not validators.macAddress(mac):
-            print "invalid mac"
+            print("invalid mac")
             return redirect('/')
         if not validators.url(fwDest):
             #If it's *, then we'll update the defaultFwAction for the device, bypass validation
             if fwDest != "*":
-                print "invalid destination"
+                print("invalid destination")
                 return redirect('/')
         if len(fwAction) == 0:
-            print "invalid action, no action given"
+            print("invalid action, no action given")
             return redirect('/')
         if fwAction == "true":
             fwAction="ACCEPT"
         elif fwAction == "false":
             fwAction="DROP"
         else:
-            print "unknown action"
+            print("unknown action")
             return redirect('/')
         if fwDest == '*':
             
             deviceQuery = {"query": {"match_phrase": {"mac": { "query": mac }}}}
             deviceInfo=es.search(esService, deviceQuery, 'sweet_security', 'devices')
             if deviceInfo is None:
-                flash(u'Unknown device', 'error')
+                flash('Unknown device', 'error')
                 return redirect('/')
             elif len(deviceInfo['hits']['hits']) == 0:
-                flash(u'Unknown device', 'error')
+                flash('Unknown device', 'error')
                 return redirect('/')
             elif len(deviceInfo['hits']['hits']) == 1:
                 for hit in deviceInfo['hits']['hits']:
@@ -526,7 +525,7 @@ def create_app():
                     es.update(esService, body, 'sweet_security', 'devices', hit['_id'])
                 #Have to delay the response so the refreshed page shows the new name
                 sleep(1)
-                flash(u'Device updated', 'success')
+                flash('Device updated', 'success')
                 return redirect('/')
             else:
                 es.consolidate(mac,esService,'devices')
@@ -537,7 +536,7 @@ def create_app():
                     es.update(esService, body, 'sweet_security', 'devices', hit['_id'])
                 #Have to delay the response so the refreshed page shows the new name
                 sleep(1)
-                flash(u'Device updated', 'success')
+                flash('Device updated', 'success')
             
         else:
             fwData={'mac': mac,
@@ -555,7 +554,7 @@ def create_app():
         mac=''
         fwDest=''
         f = request.form
-        for key in f.keys():
+        for key in list(f.keys()):
             for value in f.getlist(key):
                 if key == "macAddress":
                     mac=request.form['macAddress']
@@ -563,10 +562,10 @@ def create_app():
                 if key == "destination":
                     fwDest=request.form['destination']
         if not validators.macAddress(mac):
-            print "invalid mac"
+            print("invalid mac")
             return redirect('/')
         if not validators.url(fwDest):
-            print "invalid destination"
+            print("invalid destination")
             return redirect('/')
         fwQuery={"query":{"bool":{"must":[{"match":{"mac": mac }},{ "match": { "destination": fwDest }}]}}}
         exists=es.search(esService,fwQuery,'sweet_security','firewallProfiles')
@@ -585,7 +584,7 @@ def create_app():
         product=''
         version=''
         f = request.form
-        for key in f.keys():
+        for key in list(f.keys()):
             for value in f.getlist(key):
                 if key == "macAddress":
                     mac=request.form['macAddress']
@@ -706,7 +705,7 @@ def create_app():
         memAvailable = 0
         memPercent = 0
         f = request.form
-        for key in f.keys():
+        for key in list(f.keys()):
             for value in f.getlist(key):
                 if key == "sensorMac":
                     sensorMac = request.form['sensorMac']
@@ -725,36 +724,36 @@ def create_app():
                 if key == "memPercent":
                     memPercent = request.form['memPercent']
         if len(sensorMac) == 0:
-            print "unknown sensor mac"
-            flash(u'Unknown Sensor MAC', 'error')
+            print("unknown sensor mac")
+            flash('Unknown Sensor MAC', 'error')
             return redirect('/')
         if len(sensorName) == 0:
-            print "unknown sensor"
-            flash(u'Unknown Sensor Name', 'error')
+            print("unknown sensor")
+            flash('Unknown Sensor Name', 'error')
             return redirect('/settings')
         if len(broHealth) == 0:
-            print "unknown bro health"
-            flash(u'Unknown Bro Health', 'error')
+            print("unknown bro health")
+            flash('Unknown Bro Health', 'error')
             return redirect('/settings')
         if len(logstashHealth) == 0:
-            print "unknown logstash health"
-            flash(u'Unknown Logstash Health', 'error')
+            print("unknown logstash health")
+            flash('Unknown Logstash Health', 'error')
             return redirect('/settings')
         if len(diskUsage) == 0:
-            print "unknown diskUsage"
-            flash(u'Unknown Disk Usage', 'error')
+            print("unknown diskUsage")
+            flash('Unknown Disk Usage', 'error')
             return redirect('/settings')
         if len(memConsumed) == 0:
-            print "unknown memConsumed"
-            flash(u'Unknown Memory Consumed', 'error')
+            print("unknown memConsumed")
+            flash('Unknown Memory Consumed', 'error')
             return redirect('/settings')
         if len(memAvailable) == 0:
-            print "unknown memAvailable"
-            flash(u'Unknown Memory Available', 'error')
+            print("unknown memAvailable")
+            flash('Unknown Memory Available', 'error')
             return redirect('/settings')
         if len(memPercent) == 0:
-            print "unknown memPercent"
-            flash(u'Unknown Memory Percent', 'error')
+            print("unknown memPercent")
+            flash('Unknown Memory Percent', 'error')
             return redirect('/settings')
         healthInfo = {'mac': sensorMac,
                       'sensorName': sensorName,
@@ -883,7 +882,7 @@ def create_app():
         alertQuery = {"query": {"match_phrase": {"addressed": {"query": 0}}}}
         allAlerts = es.search(esService, alertQuery, 'sweet_security_alerts', 'alerts')
         if allAlerts['hits']['total'] > 0:
-            flash(u'There are %d new alerts!' % allAlerts['hits']['total'], 'error')
+            flash('There are %d new alerts!' % allAlerts['hits']['total'], 'error')
             alertCount = allAlerts['hits']['total']
             return render_template('settings.html', serverIP=serverIP, esHealth=elasticHealth, kHealth=kibanaHealth,
                                diskUsage=diskUsage, memUsage=memUsage, sensorInfo=sensorInfo, defaultFW=defaultFW,
@@ -902,7 +901,7 @@ def create_app():
         setting=''
         value=''
         f = request.form
-        for key in f.keys():
+        for key in list(f.keys()):
             for value in f.getlist(key):
                 if key == "setting":
                      setting=request.form['setting']
@@ -992,7 +991,7 @@ def create_app():
         serviceName=''
         action=''
         f = request.form
-        for key in f.keys():
+        for key in list(f.keys()):
             for value in f.getlist(key):
                 if key == "serviceName":
                      serviceName=request.form['serviceName']
@@ -1033,13 +1032,13 @@ def create_app():
     def deleteSensor():
         sensorMac = ''
         f = request.form
-        for key in f.keys():
+        for key in list(f.keys()):
             for value in f.getlist(key):
                 if key == "sensorMac":
                     sensorMac = request.form['sensorMac']
         if len(sensorMac) == 0:
-            print "unknown sensor"
-            flash(u'Unknown Sensor Name', 'error')
+            print("unknown sensor")
+            flash('Unknown Sensor Name', 'error')
             return redirect('/settings')
         sensorInfo = []
         sensorQuery = {"query": {"match_phrase": {"mac": {"query": sensorMac}}}}
@@ -1048,7 +1047,7 @@ def create_app():
             es.delete(esService, sensor['_index'], 'sensors', sensor['_id'])
         #Sleep so the reload will show OK
         sleep(1)
-        flash(u'Sensor Deleted', 'success')
+        flash('Sensor Deleted', 'success')
         return redirect('/settings')
 
     @app.route('/consolidateDevices')
@@ -1058,7 +1057,7 @@ def create_app():
         if allDevices is not None:
             for host in allDevices['hits']['hits']:
                 es.consolidate(host['_source']['mac'],esService,'devices')
-        flash(u'Devices Consolidated', 'success')
+        flash('Devices Consolidated', 'success')
         return redirect('/settings')
 
     @app.route('/alerts/add', methods=['POST'])
@@ -1068,7 +1067,7 @@ def create_app():
         logID = ''
         logIndex = ''
         f = request.form
-        for key in f.keys():
+        for key in list(f.keys()):
             for value in f.getlist(key):
                 if key == "alertType":
                     alertType = request.form['alertType']
@@ -1156,13 +1155,13 @@ def create_app():
     def alertsAddress():
         logID = ''
         f = request.form
-        for key in f.keys():
+        for key in list(f.keys()):
             for value in f.getlist(key):
                 if key == "logID":
                     logID = request.form['logID']
         if len(logID) == 0:
             return jsonify(status='404',message='Unknown log id')
-        print logID
+        print(logID)
         body = {'doc': {'addressed': 1}}
         es.update(esService, body, 'sweet_security_alerts', 'alerts', logID)
         body = {'doc': {'addressedDate': str(int(round(time.time() * 1000)))}}
@@ -1198,4 +1197,3 @@ def create_app():
         return jsonify(reason=reason)
 
     return app
-

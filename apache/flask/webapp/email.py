@@ -7,7 +7,7 @@ def emailUser(mail,subject,recipient,body):
 			msg.html = body
 			mail.send(msg)
 			return "email sent"
-		except Exception, e:
+		except Exception as e:
 			return str(e)
 	else:
 		return "No email configured"

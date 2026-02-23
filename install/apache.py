@@ -67,7 +67,7 @@ def install(installType,chosenInterface,chosenIP):
 	with open("/var/www/webapp/webapp/init_org", "rt") as fileIn:
 		with open("/var/www/webapp/webapp/__init__.py", "wt") as fileOut:
 			for line in fileIn:
-				if line.rstrip() == '__appSettings__':
+				if '__appSettings__' in line:
 					line = "    SECRET_KEY = '%s'\n" % os.urandom(24).hex()
 					if apacheEmail == 'y':
 						line += "    MAIL_USERNAME =           os.getenv('MAIL_USERNAME',        '%s')\n" % smtpUser

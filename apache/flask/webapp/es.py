@@ -2,7 +2,7 @@ def write(es,body,index,doc_type):
 	try:
 		res = es.index(index=index, doc_type=doc_type, body=body)
 		return res
-	except Exception, e:
+	except Exception as e:
 		return e
 
 def search(es,body,index,doc_type,size=None):
@@ -11,7 +11,7 @@ def search(es,body,index,doc_type,size=None):
 	try:
 		res = es.search(index=index, doc_type=doc_type, body=body, size=size)
 		return res
-	except Exception, e:
+	except Exception as e:
 		return None
 
 def update(es,body,index,doc_type,id):
