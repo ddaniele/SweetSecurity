@@ -26,7 +26,7 @@ def install(installType):
 			os.popen('sudo apt-get -y install cmake flex bison libpcap-dev libssl-dev python-dev python-pip python-flask python-scapy apache2 libapache2-mod-wsgi swig ant zip git nmap tcpdump 2>&1').read()
 			#Some ARM platforms won't have this, moving it here so it won't error on everything else
 			os.popen('sudo apt-get -y install oracle-java8-jdk 2>&1')
-		os.popen('sudo pip install elasticsearch 2>&1').read()
+		os.popen('sudo pip install "elasticsearch>=5,<6" 2>&1').read()
 		os.popen('sudo pip install requests 2>&1').read()
 		os.popen('sudo pip install flask-mail 2>&1').read()
 		os.popen('sudo pip install flask_wtf 2>&1').read()
@@ -45,7 +45,7 @@ def install(installType):
 			os.popen('sudo apt-get -y install curl python-dev python-pip python-flask python-scapy apache2 libapache2-mod-wsgi 2>&1').read()
 		else:
 			os.popen('sudo apt-get -y install python-dev python-pip python-flask python-scapy apache2 libapache2-mod-wsgi oracle-java8-jdk 2>&1').read()
-		os.popen('sudo pip install elasticsearch 2>&1').read()
+		os.popen('sudo pip install "elasticsearch>=5,<6" 2>&1').read()
 		os.popen('sudo pip install flask-mail 2>&1').read()
 		os.popen('sudo pip install flask_wtf 2>&1').read()
 		os.popen('sudo pip install cryptography --upgrade 2>&1').read()

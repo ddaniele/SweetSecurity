@@ -3,8 +3,24 @@ import os
 import shutil
 import sys
 from time import sleep
+try:
+    from urllib.parse import quote
+except ImportError:
+    from urllib import quote
 
 from . import hashCheck
+
+def get_es_client():
+    from elasticsearch import Elasticsearch
+    return Elasticsearch(hosts=['http://localhost:9200'])
+
+def es_put_doc(es_service, index_name, doc_type, doc_id, body):
+    path = '/%s/%s/%s' % (index_name, doc_type, quote(str(doc_id), safe=''))
+    return es_service.transport.perform_request('PUT', path, body=body)
+
+def es_update_doc(es_service, index_name, doc_type, doc_id, body):
+    path = '/%s/%s/%s/_update' % (index_name, doc_type, quote(str(doc_id), safe=''))
+    return es_service.transport.perform_request('POST', path, body=body)
 
 def install(chosenInterfaceIP):
     kibanaLatest = '5.5.1'
@@ -54,7 +70,7 @@ def install(chosenInterfaceIP):
         # Custom stuff for ARM
         if not cpuArch.startswith('x86'):
             # Remove nodejs on Pi3
-            os.popen('sudo apt-get -y remove nodejs-legacy nodejs nodered').read()
+            os.popen('sudo apt-get -y remove nodejs-legacy nodejs nodered || true').read()
             # Install nodejs v6, required for Kibana 5.3.0 and higher
             os.popen('sudo wget https://nodejs.org/download/release/v6.10.2/node-v6.10.2-linux-armv6l.tar.gz').read()
             os.popen('sudo mv node-v6.10.2-linux-armv6l.tar.gz /usr/local/node-v6.10.2-linux-armv6l.tar.gz')
@@ -91,13 +107,12 @@ def install(chosenInterfaceIP):
     for file in os.listdir(dashboardPath):
         importDashboard(os.path.join(dashboardPath, file))
     #Set logstash-* as the default Kibana index
-    from elasticsearch import Elasticsearch
-    esService = Elasticsearch()
+    esService = get_es_client()
     body = {'doc' : {'defaultIndex': 'logstash-*'}}
     while True:
 
         try:
-            esService.update(index='.kibana', id='5.5.1', doc_type='config', body=body)
+            es_update_doc(esService, '.kibana', 'config', '5.5.1', body)
             break
         except:
             print("Waiting for Elasticsearch to start...")
@@ -107,20 +122,18 @@ def install(chosenInterfaceIP):
 
 def importDashboard(jsonFileName):
     print("Importing %s" % jsonFileName)
-    from elasticsearch import Elasticsearch
-    esService = Elasticsearch()
+    esService = get_es_client()
     with open(jsonFileName) as kibana_file:
         dashboardJson = json.load(kibana_file)
     for data in dashboardJson:
-        esService.index(index='.kibana', doc_type=data['_type'], id=data['_id'], body=data['_source'])
+        es_put_doc(esService, '.kibana', data['_type'], data['_id'], data['_source'])
 
 
 def importIndexMapping(jsonFileName):
     print("Importing %s" % jsonFileName)
-    from elasticsearch import Elasticsearch
-    esService = Elasticsearch()
+    esService = get_es_client()
     with open(jsonFileName) as kibanaFile:
         jsonString = kibanaFile.read()
     dashboardJson = json.loads(str(jsonString))
     dashboardJson['fields'] = json.dumps(dashboardJson['fields'])
-    esService.index(index='.kibana', doc_type='index-pattern', id=dashboardJson['title'], body=dashboardJson)
+    es_put_doc(esService, '.kibana', 'index-pattern', dashboardJson['title'], dashboardJson)
