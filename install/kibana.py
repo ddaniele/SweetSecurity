@@ -21,6 +21,9 @@ def install(chosenInterfaceIP):
     if kibanaInstalled == False:
         print("Installing Kibana")
         print("  Downloading Kibana 5.5.1")
+        # Previous failed installs can leave /opt/kibana behind and break copytree.
+        if os.path.exists('/opt/kibana'):
+            shutil.rmtree('/opt/kibana')
         if cpuArch == 'x86_64':
             os.popen(
                 'sudo wget https://artifacts.elastic.co/downloads/kibana/kibana-5.5.1-linux-x86_64.tar.gz 2>&1').read()
