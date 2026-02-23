@@ -26,7 +26,7 @@ def create_app():
     # Setup Flask app and app.config
     app = Flask(__name__)
     app.config.from_object(__name__+'.ConfigClass')
-    esService = Elasticsearch()
+    esService = Elasticsearch(hosts=['http://localhost:9200'])
     mail = Mail(app)
     try:
         recipient=app.config['MAIL_USERNAME']
@@ -35,6 +35,14 @@ def create_app():
 
 
     csrf.init_app(app)
+
+    def _hits_total(result):
+        if result is None:
+            return 0
+        total = result.get('hits', {}).get('total', 0)
+        if isinstance(total, dict):
+            return total.get('value', 0)
+        return total
 
 
     @app.route('/csrf')
@@ -69,9 +77,9 @@ def create_app():
                 deviceList.append(deviceInfo)
         alertQuery = {"query": {"match_phrase": {"addressed": {"query": 0}}}}
         allAlerts = es.search(esService, alertQuery, 'sweet_security_alerts', 'alerts')
-        if allAlerts['hits']['total'] > 0:
-            flash('There are %d new alerts!' % allAlerts['hits']['total'], 'error')
-            alertCount = allAlerts['hits']['total']
+        alertCount = _hits_total(allAlerts)
+        if alertCount > 0:
+            flash('There are %d new alerts!' % alertCount, 'error')
             return render_template('index.html', serverIP=serverIP, deviceList=deviceList, alertCount=alertCount)
         return render_template('index.html', serverIP=serverIP, deviceList=deviceList)
 
@@ -869,21 +877,21 @@ def create_app():
                 systemInfo = {
                     'time': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(lastSeenTime)),
                     'timeSince': int(timeSince / 1000) / 60,
-                    'sensorName': sensor['_source']['sensorName'],
-                    'sensorMac': sensor['_source']['mac'],
-                    'logstash': sensor['_source']['logstashHealth'],
-                    'broStatus': sensor['_source']['broHealth'],
-                    'diskUsage': int(sensor['_source']['diskUsage']),
-                    'memInstalled': int(sensor['_source']['memAvailable']),
-                    'memConsumed': int(sensor['_source']['memConsumed']),
-                    'memPercent': int(sensor['_source']['memPercent'])
+                    'sensorName': sensor['_source'].get('sensorName', 'unknown'),
+                    'sensorMac': sensor['_source'].get('mac', 'unknown'),
+                    'logstash': sensor['_source'].get('logstashHealth', 'unknown'),
+                    'broStatus': sensor['_source'].get('broHealth', 'unknown'),
+                    'diskUsage': int(sensor['_source'].get('diskUsage', 0)),
+                    'memInstalled': int(sensor['_source'].get('memAvailable', 0)),
+                    'memConsumed': int(sensor['_source'].get('memConsumed', 0)),
+                    'memPercent': int(sensor['_source'].get('memPercent', 0))
                 }
                 sensorInfo.append(systemInfo)
         alertQuery = {"query": {"match_phrase": {"addressed": {"query": 0}}}}
         allAlerts = es.search(esService, alertQuery, 'sweet_security_alerts', 'alerts')
-        if allAlerts['hits']['total'] > 0:
-            flash('There are %d new alerts!' % allAlerts['hits']['total'], 'error')
-            alertCount = allAlerts['hits']['total']
+        alertCount = _hits_total(allAlerts)
+        if alertCount > 0:
+            flash('There are %d new alerts!' % alertCount, 'error')
             return render_template('settings.html', serverIP=serverIP, esHealth=elasticHealth, kHealth=kibanaHealth,
                                diskUsage=diskUsage, memUsage=memUsage, sensorInfo=sensorInfo, defaultFW=defaultFW,
                                defaultIsolate=defaultIsolate, defaultMonitor=defaultMonitor,
@@ -1024,8 +1032,9 @@ def create_app():
                 os.popen('sudo service sweetsecurity_server stop').read()
             else:
                 return "unknown action"
-        return "unknown service"
-        return "unknown service"
+        else:
+            return "unknown service"
+        return "success"
 
 
     @app.route('/deleteSensor', methods=['POST'])
@@ -1139,9 +1148,9 @@ def create_app():
         serverIP = serverIP[0]
         alertQuery = {"query": {"match_phrase": {"addressed": {"query": 0}}}}
         allAlerts = es.search(esService, alertQuery, 'sweet_security_alerts', 'alerts')
-        alertCount=allAlerts['hits']['total']
+        alertCount = _hits_total(allAlerts)
         myAlerts=[]
-        for ssAlert in allAlerts['hits']['hits']:
+        for ssAlert in (allAlerts or {}).get('hits', {}).get('hits', []):
             firstSeen = float(ssAlert['_source']['firstSeen']) / 1000.0
             humanDate = datetime.datetime.fromtimestamp(firstSeen).strftime('%Y-%m-%d %H:%M:%S')
             ssAlert['_source']['firstSeen'] = humanDate
@@ -1175,7 +1184,7 @@ def create_app():
         alertQuery = {"query": {"match_phrase": {"addressed": {"query": 1}}}}
         allAlerts = es.search(esService, alertQuery, 'sweet_security_alerts', 'alerts')
         myAlerts = []
-        for ssAlert in allAlerts['hits']['hits']:
+        for ssAlert in (allAlerts or {}).get('hits', {}).get('hits', []):
             firstSeen = float(ssAlert['_source']['firstSeen']) / 1000.0
             firstHumanDate = datetime.datetime.fromtimestamp(firstSeen).strftime('%Y-%m-%d %H:%M:%S')
             ssAlert['_source']['firstSeen'] = firstHumanDate
@@ -1185,7 +1194,7 @@ def create_app():
             myAlerts.append(ssAlert)
         alertQuery = {"query": {"match_phrase": {"addressed": {"query": 0}}}}
         adressedAlerts = es.search(esService, alertQuery, 'sweet_security_alerts', 'alerts')
-        alertCount = adressedAlerts['hits']['total']
+        alertCount = _hits_total(adressedAlerts)
         if alertCount==0:
             return render_template('addressedAlerts.html', serverIP=serverIP, myAlerts=myAlerts)
         else:
