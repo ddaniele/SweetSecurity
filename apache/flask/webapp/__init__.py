@@ -26,6 +26,9 @@ def create_app():
     # Setup Flask app and app.config
     app = Flask(__name__)
     app.config.from_object(__name__+'.ConfigClass')
+    if not app.config.get('SECRET_KEY'):
+        # Keep the app usable even if installer config injection was skipped.
+        app.config['SECRET_KEY'] = os.urandom(24).hex()
     esService = Elasticsearch(hosts=['http://localhost:9200'])
     mail = Mail(app)
     try:
