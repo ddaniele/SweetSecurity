@@ -2,7 +2,7 @@ import datetime, logging, os, time
 import alert, es
 
 from elasticsearch import Elasticsearch
-esService = Elasticsearch()
+esService = Elasticsearch(hosts=['http://localhost:9200'])
 
 def getNumIndices():
 	return len(esService.indices.get('logstash-*'))
@@ -71,4 +71,3 @@ def deleteOldLogs():
 
 #print checkDisk()
 #print deleteOldLogs()
-

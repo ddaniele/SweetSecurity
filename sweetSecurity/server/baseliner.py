@@ -5,7 +5,7 @@ import alert
 import es
 
 from elasticsearch import Elasticsearch
-esService = Elasticsearch()
+esService = Elasticsearch(hosts=['http://localhost:9200'])
 
 def getLogs(ip,log):
     logQuery={
@@ -132,6 +132,5 @@ def run():
             logger.info("    Searching ssl.log")
             ssl=sslSearch(host['_source']['ip4'],host['_source']['mac'])
             logger.info("      Found %d new entries" % ssl)
-
 
 
