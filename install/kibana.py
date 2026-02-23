@@ -16,11 +16,21 @@ def get_es_client():
 
 def es_put_doc(es_service, index_name, doc_type, doc_id, body):
     path = '/%s/%s/%s' % (index_name, doc_type, quote(str(doc_id), safe=''))
-    return es_service.transport.perform_request('PUT', path, body=body)
+    return es_service.transport.perform_request(
+        'PUT',
+        path,
+        body=body,
+        headers={'Content-Type': 'application/json'}
+    )
 
 def es_update_doc(es_service, index_name, doc_type, doc_id, body):
     path = '/%s/%s/%s/_update' % (index_name, doc_type, quote(str(doc_id), safe=''))
-    return es_service.transport.perform_request('POST', path, body=body)
+    return es_service.transport.perform_request(
+        'POST',
+        path,
+        body=body,
+        headers={'Content-Type': 'application/json'}
+    )
 
 def install(chosenInterfaceIP):
     kibanaLatest = '5.5.1'
@@ -71,17 +81,26 @@ def install(chosenInterfaceIP):
         if not cpuArch.startswith('x86'):
             # Remove nodejs on Pi3
             os.popen('sudo apt-get -y remove nodejs-legacy nodejs nodered || true').read()
-            # Install nodejs v6, required for Kibana 5.3.0 and higher
-            os.popen('sudo wget https://nodejs.org/download/release/v6.10.2/node-v6.10.2-linux-armv6l.tar.gz').read()
-            os.popen('sudo mv node-v6.10.2-linux-armv6l.tar.gz /usr/local/node-v6.10.2-linux-armv6l.tar.gz')
+            # Install nodejs v6 compatible with the current ARM architecture.
+            if cpuArch in ('aarch64', 'arm64'):
+                nodePackage = 'node-v6.10.2-linux-arm64.tar.gz'
+            elif cpuArch in ('armv7l',):
+                nodePackage = 'node-v6.10.2-linux-armv7l.tar.gz'
+            else:
+                nodePackage = 'node-v6.10.2-linux-armv6l.tar.gz'
+            nodeUrl = 'https://nodejs.org/download/release/v6.10.2/%s' % nodePackage
+            os.popen('sudo wget %s' % nodeUrl).read()
+            if not os.path.isfile(nodePackage):
+                sys.exit('Error downloading NodeJS runtime for architecture: %s' % cpuArch)
+            os.popen('sudo mv %s /usr/local/%s' % (nodePackage, nodePackage))
             os.chdir('/usr/local')
-            os.popen('sudo tar -xzf node-v6.10.2-linux-armv6l.tar.gz --strip=1').read()
+            os.popen('sudo tar -xzf %s --strip=1' % nodePackage).read()
             shutil.move('/opt/kibana/node/bin/node', '/opt/kibana/node/bin/node.orig')
             shutil.move('/opt/kibana/node/bin/npm', '/opt/kibana/node/bin/npm.orig')
             os.popen('sudo ln -s /usr/local/bin/node /opt/kibana/node/bin/node').read()
             os.popen('sudo ln -s /usr/local/bin/npm /opt/kibana/node/bin/npm').read()
             os.chdir(cwd)
-            os.remove('/usr/local/node-v6.10.2-linux-armv6l.tar.gz')
+            os.remove('/usr/local/%s' % nodePackage)
 
         # The --no-warnings flag is no longer a valid option on ARM, need to remove it
         # kibanaBin="/opt/kibana/bin/kibana"
