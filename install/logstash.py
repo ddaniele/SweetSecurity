@@ -3,6 +3,10 @@ from time import sleep
 
 from . import hashCheck
 
+def has_java8():
+	javaVersion=os.popen('java -version 2>&1').read()
+	return ('version "1.8' in javaVersion) or ('openjdk version "1.8' in javaVersion)
+
 def get_user_input(input_string):
 	if sys.version_info[0] > 2:
 		return input(input_string)
@@ -42,6 +46,8 @@ def install(esServer,esUser,esPass):
 		if logstashLatest== logstashVersion.rstrip().split()[1]:
 			logstashInstalled=True
 	if logstashInstalled == False:
+		if not has_java8():
+			sys.exit('Logstash 5.5.1 requires Java 8. Install Java 8 on the sensor and rerun setup.')
 		#Check if user wants email alerts
 		while True:
 			logstashEmail = get_user_input("\033[1mConfigure Logstash To Send Email Alerts (Y/n)\033[0m: ")
@@ -62,20 +68,32 @@ def install(esServer,esUser,esPass):
 			sys.exit('Error downloading logstash, mismatched file hashes')
 		print("  Installing Logstash")
 		os.popen('sudo dpkg -i logstash-5.5.1.deb').read()
+		if not os.path.isfile('/usr/share/logstash/bin/logstash'):
+			sys.exit('Logstash install failed (binary missing). Verify architecture support and Java 8 availability.')
 		print("  Cleaning Up Logstash Installation Files")
 		os.remove('logstash-5.5.1.deb')
-		os.popen('sudo systemctl enable logstash.service').read()
+		if os.path.isfile('/lib/systemd/system/logstash.service') or os.path.isfile('/etc/systemd/system/logstash.service'):
+			os.popen('sudo systemctl enable logstash.service').read()
+		else:
+			print("  Warning: logstash.service not found; skipping enable")
 		
 		if not cpuArch.startswith('x86'):
 			#Get ARM JFFI Code
 			os.popen('sudo git clone https://github.com/jnr/jffi.git').read()
 			os.chdir('jffi')
-			os.popen('sudo ant jar').read()
-			shutil.copyfile('build/jni/libjffi-1.2.so', '/usr/share/logstash/vendor/jruby/lib/jni/arm-Linux/libjffi-1.2.so')
-			os.chdir('/usr/share/logstash/vendor/jruby/lib')
-			os.popen('sudo zip -g jruby-complete-1.7.11.jar jni/arm-Linux/libjffi-1.2.so').read()
+			if shutil.which('ant') is None:
+				print("  Warning: ant not installed; skipping ARM jffi patch")
+			else:
+				os.popen('sudo ant jar').read()
+				if os.path.isfile('build/jni/libjffi-1.2.so') and os.path.isdir('/usr/share/logstash/vendor/jruby/lib/jni/arm-Linux'):
+					shutil.copyfile('build/jni/libjffi-1.2.so', '/usr/share/logstash/vendor/jruby/lib/jni/arm-Linux/libjffi-1.2.so')
+					os.chdir('/usr/share/logstash/vendor/jruby/lib')
+					os.popen('sudo zip -g jruby-complete-1.7.11.jar jni/arm-Linux/libjffi-1.2.so').read()
+				else:
+					print("  Warning: ARM jffi output/path missing; skipping patch")
 			os.chdir(cwd)
-			shutil.rmtree("jffi/")
+			if os.path.isdir("jffi/"):
+				shutil.rmtree("jffi/")
 		
 		
 		#Install Logstash-Filter-Translate Plugin

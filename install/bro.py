@@ -87,7 +87,10 @@ def install(chosenInterface,webServer):
 				print("  Warning: broctl.cfg not found; skipping broargs tuning")
 		
 		print("  Deploying and Starting Bro")
-		os.popen('sudo /opt/nsm/bro/bin/broctl deploy').read()
-		os.popen('sudo /opt/nsm/bro/bin/broctl start').read()
+		if os.path.isfile('/opt/nsm/bro/bin/broctl'):
+			os.popen('sudo /opt/nsm/bro/bin/broctl deploy').read()
+			os.popen('sudo /opt/nsm/bro/bin/broctl start').read()
+		else:
+			print("  Warning: /opt/nsm/bro/bin/broctl not found; skipping deploy/start")
 	else:
 		print("Bro already installed...")
