@@ -58,17 +58,33 @@ def install(chosenInterface,webServer):
 		#Update node.cfg to listen on chosen interface
 		print("  Configuring Bro")
 		newInterfaceString='interface=%s\n' % chosenInterface
-		shutil.move('/opt/nsm/bro/etc/node.cfg','/opt/nsm/bro/etc/node.orig')
-		with open("/opt/nsm/bro/etc/node.orig", "rt") as fileIn:
-			with open("/opt/nsm/bro/etc/node.cfg", "wt") as fileOut:
-				for line in fileIn:
-					if line.rstrip() == "interface=eth0":
-						line=newInterfaceString
-					fileOut.write(line)
+		nodeCfgPath = '/opt/nsm/bro/etc/node.cfg'
+		nodeOrigPath = '/opt/nsm/bro/etc/node.orig'
+		if os.path.isfile(nodeCfgPath):
+			shutil.move(nodeCfgPath, nodeOrigPath)
+			with open(nodeOrigPath, "rt") as fileIn:
+				with open(nodeCfgPath, "wt") as fileOut:
+					for line in fileIn:
+						if line.rstrip() == "interface=eth0":
+							line = newInterfaceString
+						fileOut.write(line)
+		else:
+			# Some builds don't ship node.cfg; write a minimal standalone config.
+			if not os.path.isdir('/opt/nsm/bro/etc'):
+				os.makedirs('/opt/nsm/bro/etc')
+			with open(nodeCfgPath, 'wt') as nodeFile:
+				nodeFile.write('[bro]\n')
+				nodeFile.write('type=standalone\n')
+				nodeFile.write('host=localhost\n')
+				nodeFile.write(newInterfaceString)
 		#ignore communication between sensor and webServer, writes a ton of noise
 		if webServer != 'localhost':
-			with open("/opt/nsm/bro/etc/broctl.cfg", "a") as broCtlFile:
-				broCtlFile.write("\nbroargs = -f 'not host %s'\n" % webServer)
+			broCtlCfgPath = "/opt/nsm/bro/etc/broctl.cfg"
+			if os.path.isfile(broCtlCfgPath):
+				with open(broCtlCfgPath, "a") as broCtlFile:
+					broCtlFile.write("\nbroargs = -f 'not host %s'\n" % webServer)
+			else:
+				print("  Warning: broctl.cfg not found; skipping broargs tuning")
 		
 		print("  Deploying and Starting Bro")
 		os.popen('sudo /opt/nsm/bro/bin/broctl deploy').read()
